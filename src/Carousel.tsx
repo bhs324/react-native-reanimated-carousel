@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import React from "react";
 import { StyleSheet } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Directions, GestureHandlerRootView } from "react-native-gesture-handler";
 import { runOnJS, useDerivedValue } from "react-native-reanimated";
 
 import { useAutoPlay } from "./hooks/useAutoPlay";
@@ -86,7 +86,7 @@ const Carousel = React.forwardRef<ICarouselInstance, TCarouselProps<any>>(
       withAnimation,
       defaultIndex,
       onScrollEnd: () => runOnJS(_onScrollEnd)(),
-      onScrollBegin: () => !!onScrollBegin && runOnJS(onScrollBegin)(),
+      onScrollBegin: (index: number) => !!onScrollBegin && runOnJS(onScrollBegin)(index),
       duration: scrollAnimationDuration,
     });
 
@@ -100,15 +100,43 @@ const Carousel = React.forwardRef<ICarouselInstance, TCarouselProps<any>>(
       carouselController,
     });
 
-    const _onScrollEnd = React.useCallback(() => {
+    const getRealIndex = React.useCallback((direction?: Directions) => {
       const _sharedIndex = Math.round(getSharedIndex());
 
-      const realIndex = computedRealIndexWithAutoFillData({
+      let realIndex = computedRealIndexWithAutoFillData({
         index: _sharedIndex,
         dataLength: rawDataLength,
         loop,
         autoFillData,
       });
+
+      if (direction === Directions.RIGHT || direction === Directions.DOWN) {
+        if (++realIndex >= rawDataLength) {
+          if (loop)
+            realIndex = 0;
+          else
+            realIndex--;
+        }
+      }
+      else if (direction === Directions.LEFT || direction === Directions.UP) {
+        if (--realIndex < 0) {
+          if (loop)
+            realIndex = rawDataLength - 1;
+          else
+            realIndex++;
+        }
+      }
+
+      return realIndex;
+    }, [
+      loop,
+      autoFillData,
+      rawDataLength,
+      getSharedIndex,
+    ]);
+
+    const _onScrollEnd = React.useCallback(() => {
+      const realIndex = getRealIndex();
 
       if (onSnapToItem)
         onSnapToItem(realIndex);
@@ -116,18 +144,15 @@ const Carousel = React.forwardRef<ICarouselInstance, TCarouselProps<any>>(
       if (onScrollEnd)
         onScrollEnd(realIndex);
     }, [
-      loop,
-      autoFillData,
-      rawDataLength,
-      getSharedIndex,
+      getRealIndex,
       onSnapToItem,
       onScrollEnd,
     ]);
 
-    const scrollViewGestureOnScrollBegin = React.useCallback(() => {
+    const scrollViewGestureOnScrollBegin = React.useCallback((direction: Directions) => {
       pauseAutoPlay();
-      onScrollBegin?.();
-    }, [onScrollBegin, pauseAutoPlay]);
+      onScrollBegin?.(getRealIndex(direction));
+    }, [getRealIndex, rawData, onScrollBegin, pauseAutoPlay]);
 
     const scrollViewGestureOnScrollEnd = React.useCallback(() => {
       startAutoPlay();

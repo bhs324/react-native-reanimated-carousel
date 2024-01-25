@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import React from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import type { PanGestureHandlerGestureEvent } from "react-native-gesture-handler";
-import { PanGestureHandler } from "react-native-gesture-handler";
+import { Directions, PanGestureHandler } from "react-native-gesture-handler";
 import Animated, {
   cancelAnimation,
   measure,
@@ -31,7 +31,7 @@ interface Props {
   infinite?: boolean
   testID?: string
   style?: StyleProp<ViewStyle>
-  onScrollBegin?: () => void
+  onScrollBegin?: (direction: Directions) => void
   onScrollEnd?: () => void
   onTouchBegin?: () => void
   onTouchEnd?: () => void
@@ -72,6 +72,7 @@ const IScrollViewGesture: React.FC<PropsWithChildren<Props>> = (props) => {
   const scrollEndTranslation = useSharedValue(0);
   const scrollEndVelocity = useSharedValue(0);
   const containerRef = useAnimatedRef<Animated.View>();
+  const direction = useSharedValue<Directions | null>(null);
 
   // Get the limit of the scroll.
   const getLimit = React.useCallback(() => {
@@ -267,7 +268,6 @@ const IScrollViewGesture: React.FC<PropsWithChildren<Props>> = (props) => {
       onStart: (_, ctx) => {
         touching.value = true;
         ctx.validStart = true;
-        onScrollBegin && runOnJS(onScrollBegin)();
 
         ctx.max = (maxPage - 1) * size;
         if (!infinite && !overscrollEnabled)
@@ -282,6 +282,15 @@ const IScrollViewGesture: React.FC<PropsWithChildren<Props>> = (props) => {
         }
         touching.value = true;
         let { translationX, translationY } = e;
+
+        if (translationX < 0)
+          direction.value = Directions.RIGHT;
+        else if (translationX > 0)
+          direction.value = Directions.LEFT;
+        else if (translationY < 0)
+          direction.value = Directions.UP;
+        else if (translationY > 0)
+          direction.value = Directions.DOWN;
 
         const totalTranslation = isHorizontal.value ? translationX : translationY;
 
@@ -309,6 +318,9 @@ const IScrollViewGesture: React.FC<PropsWithChildren<Props>> = (props) => {
         translation.value = translationValue;
       },
       onEnd: (e, ctx) => {
+        if (direction.value && onScrollBegin)
+          runOnJS(onScrollBegin)(direction.value);
+
         const { velocityX, velocityY, translationX, translationY } = e;
         scrollEndVelocity.value = isHorizontal.value
           ? velocityX

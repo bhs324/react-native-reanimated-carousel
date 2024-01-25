@@ -26,7 +26,7 @@ interface IOpts {
   withAnimation?: TCarouselProps["withAnimation"]
   duration?: number
   defaultIndex?: number
-  onScrollBegin?: () => void
+  onScrollBegin?: (index: number) => void
   onScrollEnd?: () => void
 }
 
@@ -136,8 +136,8 @@ export function useCarouselController(options: IOpts): ICarouselController {
     options.onScrollEnd?.();
   }, [options]);
 
-  const onScrollBegin = React.useCallback(() => {
-    options.onScrollBegin?.();
+  const onScrollBegin = React.useCallback((index: number) => {
+    options.onScrollBegin?.(index);
   }, [options]);
 
   const scrollWithTiming = React.useCallback(
@@ -171,10 +171,10 @@ export function useCarouselController(options: IOpts): ICarouselController {
       if (!canSliding() || (!loop && index.value >= dataInfo.length - 1))
         return;
 
-      onScrollBegin?.();
-
       const nextPage = currentFixedPage() + count;
       index.value = nextPage;
+
+      onScrollBegin?.(index.value);
 
       if (animated) {
         handlerOffset.value = scrollWithTiming(
@@ -205,10 +205,10 @@ export function useCarouselController(options: IOpts): ICarouselController {
       const { count = 1, animated = true, onFinished } = opts;
       if (!canSliding() || (!loop && index.value <= 0)) return;
 
-      onScrollBegin?.();
-
       const prevPage = currentFixedPage() - count;
       index.value = prevPage;
+
+      onScrollBegin?.(index.value);
 
       if (animated) {
         handlerOffset.value = scrollWithTiming(
@@ -239,9 +239,10 @@ export function useCarouselController(options: IOpts): ICarouselController {
       if (i === index.value) return;
       if (!canSliding()) return;
 
-      onScrollBegin?.();
       // direction -> 1 | -1
       const direction = handlerOffsetDirection(handlerOffset);
+
+      onScrollBegin?.(i);
 
       // target offset
       const offset = i * size * direction;

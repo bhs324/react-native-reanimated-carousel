@@ -42,6 +42,7 @@ function Index() {
         autoPlayInterval={isFast ? 100 : 2000}
         data={data}
         pagingEnabled={isPagingEnabled}
+        onScrollBegin={index => console.log("scroll begin to index:", index)}
         onSnapToItem={index => console.log("current index:", index)}
         renderItem={({ index }) => <SBItem key={index} index={index} />}
       />
